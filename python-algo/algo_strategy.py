@@ -46,6 +46,7 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         self.TURRETS = [[4, 13], [11, 13], [22, 11], [25, 11]]
         self.WALLS = [[0, 13], [1, 13], [2, 13], [3, 13], [5, 13], [6, 13], [7, 13], [8, 13], [9, 13], [10, 13], [12, 13], [13, 13], [14, 13], [15, 13], [16, 13], [17, 13], [18, 13], [19, 13], [20, 13], [21, 13], [22, 13], [25, 13], [26, 13], [27, 13]]
+        self.SUPPORTS = [[6, 9], [7, 9], [8, 9], [5, 8], [6, 8], [7, 8], [8, 8], [6, 7], [7, 7], [8, 7], [7, 6]]
 
 
     def spawn(self, game_state, locations, unit):
@@ -71,10 +72,13 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.spawn(game_state, self.TURRETS, TURRET)
         self.spawn(game_state, self.WALLS, WALL)
         self.upgrade(game_state, self.TURRETS)
-        self.spawn(game_state, [[1, 12]], DEMOLISHER)
-
+        self.spawn(game_state, self.SUPPORTS, SUPPORT)
         if (game_state.turn_number % 4 == 0):
-            self.spawn(game_state, [[1, 12] for _ in range(100)], SCOUT)
+            self.spawn(game_state, [[4, 9]], DEMOLISHER)
+            self.spawn(game_state, [[8, 5] for _ in range(100)], SCOUT)
+        elif (game_state.turn_number % 2 == 0):
+            self.spawn(game_state, [[4, 9], [4, 9]], DEMOLISHER)
+
 
         game_state.submit_turn()
 
