@@ -107,7 +107,14 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.spawn([([4, 9], DEMOLISHER)])
         self.spawn([([8, 5], SCOUT) for _ in range(100)])
     
-    def attack_with_max_demolishers(self):
+    def attack_with_max_demolishers(self, location):
+        self.spawn([(location, DEMOLISHER) for _ in range(100)])
+
+    def attack_with_max_scouts(self, location):
+        self.spawn([(location, SCOUT) for _ in range(100)])
+
+    def attack_with_scout_stack_demolisher(self):
+        self.spawn([([24, 10], SCOUT) for _ in range(6)])
         self.spawn([([14, 0], DEMOLISHER) for _ in range(100)])
 
     def on_turn(self, turn_state):
@@ -135,17 +142,43 @@ class AlgoStrategy(gamelib.AlgoCore):
                         (self.PATH, "SPAWN"),
                         ]
         self.build_in_order(build_order)
+
+        # loss1 = 0
+        # for location in self.game_state.find_path_to_edge([13, 0]):
+        #     for attacker in self.game_state.get_attackers(location, 0):
+        #         loss1 += 20 if attacker.upgraded else 8
+        # loss2 = 0
+        # for location in self.game_state.find_path_to_edge([14, 0]):
+        #     for attacker in self.game_state.get_attackers(location, 0):
+        #         loss2 += 20 if attacker.upgraded else 8
+        
+        # spawn_location = [13, 0] if loss1 <= loss2 else [14, 0]
         
         # attack
-        # if (self.game_state.turn_number % 4 == 0):
-        #     # self.spawn(game_state, [[4, 9]], DEMOLISHER)
-        #     # self.spawn(game_state, [[8, 5] for _ in range(100)], SCOUT)
-        #     # self.attack_with_one_demolisher_and_max_scouts()
-            # self.attack_with_max_demolishers()
-        # elif (self.game_state.turn_number % 2 == 0):
-            # self.attack_with_two_demolishers()
+        
+        # strat 1
+        # if self.game_state.get_resource(MP, 0) > 15:
+        #     if self.game_state.turn_number < 15:
+        #         self.attack_with_max_demolishers([13, 0])
+        #     else:
+        #         self.attack_with_max_demolishers([14, 0])
+
+        # strat 2
+        # if self.game_state.get_resource(MP, 0) > 18:
+            # self.attack_with_scout_stack_demolisher()
+
+        # strat 3
+        flag = True
         if self.game_state.get_resource(MP, 0) > 15:
-            self.attack_with_max_demolishers()
+            if self.game_state.turn_number < 15:
+                self.attack_with_max_demolishers([13, 0])
+            else:
+                if flag:
+                    self.attack_with_max_demolishers([14, 0])
+                    flag = False
+                else:
+                    self.attack_with_max_scouts([14, 0])
+                    flag = True
 
         self.game_state.submit_turn()
 
