@@ -50,18 +50,26 @@ class AlgoStrategy(gamelib.AlgoCore):
         
         self.TURRETS1_LOCATION = [[5, 12],[2, 13], [3, 12]] 
         self.TURRETS2_LOCATION = [[25, 11], [24,11]]
-        self.TURRETS3_LOCATION = [[6, 12], [23, 12], [7, 11], [22, 11], [8, 10], [21, 10], [9, 9], [20, 9], [10, 8], [19, 8], [11, 7], [18, 7], [12, 6], [17, 6], [13, 5], [16, 5], [14, 4], [15, 4]]
-        self.WALLS1_LOCATION = [[26,12], [0, 13], [1, 13], [6, 11], [23, 11], [7, 10], [22, 10], [8, 9], [21, 9], [9, 8], [20, 8], [10, 7], [19, 7], [11, 6], [18, 6], [12, 5], [17, 5], [13, 4], [16, 4], [14, 3], [15, 3]]
-        self.WALLS2_LOCATION = [[3, 13], [6, 12], [27, 13], [24, 12], [25, 12]]
+
+        self.TURRETS3_LOCATION = [[1,12],[2,12],[2,11],[3,10],[6, 12], [7, 11], [8, 10], [9, 9]]
+        self.TURRETS4_LOCATION = [[23, 10], [22, 9], [21, 8]] 
+        
+        self.WALLS1_LOCATION = [[6, 11], [6,12], [23, 11], [7, 10], [22, 10], [8, 9], [21, 9], [9, 8], [20, 8], [10, 7], [19, 7], [11, 6], [18, 6], [12, 5], [17, 5], [13, 4], [16, 4], [14, 3], [15, 3]]
+        self.WALLS2_LOCATION = [[3, 13], [27, 13], [24, 12], [25, 12], [26,12],[0,13],[1,13]]
         self.WALLS3_LOCATION = [[3, 11], [4, 10], [5, 9], [6, 8], [7, 7], [8, 6], [9, 5], [10, 4], [11, 3], [12, 2], [13, 1]]
+
         self.SUPPORTS_LOCATION = [[5, 8], [6, 7], [7, 6]]
+        self.SUPPORTS2_LOCATION = [[8,5],[9,4],[10,3],[11,2],[12,1]]
+
         self.TURRETS1 = [(l, TURRET) for l in self.TURRETS1_LOCATION]
         self.TURRETS2 = [(l, TURRET) for l in self.TURRETS2_LOCATION]
         self.TURRETS3 = [(l, TURRET) for l in self.TURRETS3_LOCATION]
+        self.TURRETS4 = [(l, TURRET) for l in self.TURRETS4_LOCATION]
         self.WALLS1 = [(l, WALL) for l in self.WALLS1_LOCATION]
         self.WALLS2 = [(l, WALL) for l in self.WALLS2_LOCATION]
         self.WALLS3 = [(l, WALL) for l in self.WALLS3_LOCATION]
         self.SUPPORTS = [(l, SUPPORT) for l in self.SUPPORTS_LOCATION]
+        self.SUPPORTS2 = [(l, SUPPORT) for l in self.SUPPORTS2_LOCATION]
         
     
         # self.PATH_LOCATION = [[3, 11], [4, 10], [5, 9], [6, 8], [7, 7], [8, 6], [9, 5], [10, 4], [11, 3], [12, 2], [13, 1]]
@@ -79,6 +87,14 @@ class AlgoStrategy(gamelib.AlgoCore):
         for location, unit in build:
             total += self.game_state.attempt_upgrade(location)
         return total
+    
+    def repair(self, build):
+        for location, unit in build:
+            if self.game_state.game_map[location[0], location[1]]: 
+                unit = self.game_state.game_map[location[0], location[1]][0]
+                if unit.health < unit.max_health and self.game_state.get_resource(MP, 0) > 0:
+                        self.game_state.attempt_spawn(unit, location)
+                        self.game_state.attempt_remove(location)
     
     def check_spawn(self, build):
         for location, unit in build:
@@ -102,6 +118,10 @@ class AlgoStrategy(gamelib.AlgoCore):
                 self.upgrade(build)
                 if not self.check_upgrade(build):
                     return False
+            if type == "REPAIR":
+                self.repair(build)
+                if not self.check_spawn(build):
+                    return False 
         return True
 
     def attack_with_two_demolishers(self):
@@ -111,11 +131,15 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.spawn([([4, 9], DEMOLISHER)])
         self.spawn([([8, 5], SCOUT) for _ in range(100)])
     
-    def attack_with_max_demolishers(self):
-        self.spawn([([13, 0], DEMOLISHER) for _ in range(100)])
+    def attack_with_max_demolishers(self, location):
+        self.spawn([(location, DEMOLISHER) for _ in range(100)])
 
     def attack_with_max_scouts(self, location):
         self.spawn([(location, SCOUT) for _ in range(100)])
+
+    def attack_with_scout_stack_demolisher(self):
+        self.spawn([([24, 10], SCOUT) for _ in range(6)])
+        self.spawn([([14, 0], DEMOLISHER) for _ in range(100)])
 
     def on_turn(self, turn_state):
         """
@@ -130,18 +154,25 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
 
         # defense
-        build_order = [(self.TURRETS1, "SPAWN"),
-                        (self.TURRETS1, "UPGRADE"),
+        build_order = [
                         (self.WALLS1, "SPAWN"),
                         (self.WALLS2, "SPAWN"),
+                        (self.WALLS2, "REPAIR"),
+                        (self.TURRETS1, "SPAWN"),
+                        (self.TURRETS1, "UPGRADE"),
                         (self.TURRETS2, "SPAWN"),
                         (self.TURRETS2, "UPGRADE"),
                         (self.WALLS2, "UPGRADE"),
+                        (self.TURRETS3 , "SPAWN"),
+                        (self.WALLS3, "SPAWN"),
                         (self.SUPPORTS, "SPAWN"),
                         (self.SUPPORTS, "UPGRADE"),
-                        (self.WALL3, "SPAWN"),
-                        (self.TURRETS3 , "SPAWN"),
-                        (self.PATH, "SPAWN"),
+                        (self.SUPPORTS2, "SPAWN"),
+                        (self.TURRETS3, "UPGRADE"),
+                        (self.WALLS3, "UPGRADE"),
+                        (self.SUPPORTS2, "UPGRADE"),
+                        (self.TURRETS4, "SPAWN"),
+                        # (self.PATH, "SPAWN"),
                         ]
         self.build_in_order(build_order)
         
@@ -154,23 +185,42 @@ class AlgoStrategy(gamelib.AlgoCore):
         # elif (self.game_state.turn_number % 2 == 0):
             # self.attack_with_two_demolishers()
         
-        loss1 = 0
-        for location in self.game_state.find_path_to_edge([13, 0]):
-            for attacker in self.game_state.get_attackers(location, 0):
-                loss1 += 20 if attacker.upgraded else 8
-        loss2 = 0
-        for location in self.game_state.find_path_to_edge([14, 0]):
-            for attacker in self.game_state.get_attackers(location, 0):
-                loss2 += 20 if attacker.upgraded else 8
+         # loss1 = 0
+        # for location in self.game_state.find_path_to_edge([13, 0]):
+        #     for attacker in self.game_state.get_attackers(location, 0):
+        #         loss1 += 20 if attacker.upgraded else 8
+        # loss2 = 0
+        # for location in self.game_state.find_path_to_edge([14, 0]):
+        #     for attacker in self.game_state.get_attackers(location, 0):
+        #         loss2 += 20 if attacker.upgraded else 8
         
-        spawn_location = [13, 0] if loss1 < loss2 else [14, 0]
+        # spawn_location = [13, 0] if loss1 <= loss2 else [14, 0]
+        
+        # attack
+        
+        # strat 1
+        # if self.game_state.get_resource(MP, 0) > 15:
+        #     if self.game_state.turn_number < 15:
+        #         self.attack_with_max_demolishers([13, 0])
+        #     else:
+        #         self.attack_with_max_demolishers([14, 0])
 
-        if self.game_state.turn_number < 20:
-            if self.game_state.get_resource(MP, 0) > 15:
-                self.attack_with_max_scouts(spawn_location)
-        else:
-            if self.game_state.get_resource(MP, 0) > 21:
-                self.attack_with_max_scouts(spawn_location)
+        # strat 2
+        # if self.game_state.get_resource(MP, 0) > 18:
+            # self.attack_with_scout_stack_demolisher()
+
+        # strat 3
+        flag = True
+        if self.game_state.get_resource(MP, 0) > 15:
+            if self.game_state.turn_number < 15:
+                self.attack_with_max_demolishers([13, 0])
+            else:
+                if flag:
+                    self.attack_with_max_demolishers([14, 0])
+                    flag = False
+                else:
+                    self.attack_with_max_scouts([14, 0])
+                    flag = True
 
         self.game_state.submit_turn()
 
