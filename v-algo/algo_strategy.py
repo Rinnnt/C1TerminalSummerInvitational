@@ -45,60 +45,70 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         self.scored_on_locations = []
         self.game_state = None
+
+        self.MPMAP = [5, 8.8, 11.6, 13.7, 15.3, 16.5]
         
-
-        # self.TURRETS = [[22, 11], [25, 11], [4, 13], [11, 13],  [7, 11], [17, 11]]
-        # self.WALLS = [[0, 13], [1, 13], [2, 13], [3, 13], [5, 13], [6, 13], [7, 13], [8, 13], [9, 13], [10, 13], [12, 13], [13, 13], [14, 13], [15, 13], [16, 13], [17, 13], [18, 13], [19, 13], [20, 13], [21, 13], [22, 13], [25, 13], [26, 13], [27, 13]]
-        # self.WALLS   = [[0, 13], [1, 13], [2, 13], [3, 13], [4, 13], [5, 13], [6, 13], [7, 13], [8, 13], [9, 13], [11, 13], [12, 13], [13, 13], [14, 13], [15, 13], [16, 13], [17, 13], [18, 13], [19, 13], [20, 13], [21, 13], [22, 13], [23, 13], [24, 13], [25, 13], [26, 13], [27, 13]]
-        self.WALLS = [[0, 13], [1, 13], [2, 13], [25, 13], [26, 13], [27, 13], [3, 12], [4, 12], [23, 12], [24, 12]]
-        self.TURRETS = [[2, 12], [25, 12], [7, 10], [20, 10], [13, 9]]
-        self.TURRETS_EXTRA = [[1, 12], [26, 12]]
-
-        self.SUPPORTS = [[6, 9], [7, 9], [8, 9], [5, 8], [6, 8], [7, 8], [8, 8], [6, 7], [7, 7], [8, 7], [7, 6]]
+        self.TURRETS1_LOCATION = [[5, 12], [24, 12]]
+        self.TURRETS2_LOCATION = [[2, 13], [3, 12]]
+        self.WALLS1_LOCATION = [[0, 13], [1, 13], [26, 12], [27, 13], [6, 11], [23, 11], [7, 10], [22, 10], [8, 9], [21, 9], [9, 8], [20, 8], [10, 7], [19, 7], [11, 6], [18, 6], [12, 5], [17, 5], [13, 4], [16, 4], [14, 3], [15, 3]]
+        self.WALLS2_LOCATION = [[3, 13], [25, 12], [6, 12]]
+        self.SUPPORTS_LOCATION = [[5, 8], [6, 7], [7, 6]]
+        self.TURRETS1 = [(l, TURRET) for l in self.TURRETS1_LOCATION]
+        self.TURRETS2 = [(l, TURRET) for l in self.TURRETS2_LOCATION]
+        self.WALLS1 = [(l, WALL) for l in self.WALLS1_LOCATION]
+        self.WALLS2 = [(l, WALL) for l in self.WALLS2_LOCATION]
+        self.SUPPORTS = [(l, SUPPORT) for l in self.SUPPORTS_LOCATION]
+        
+    
+        self.PATH_LOCATION = [[3, 11], [4, 10], [5, 9], [6, 8], [7, 7], [8, 6], [9, 5], [10, 4], [11, 3], [12, 2], [13, 1]]
+        self.PATH = [(self.PATH_LOCATION[i], TURRET if i % 2 else SUPPORT) for i in range(len(self.PATH_LOCATION))]
 
     # RETURN TOTAL NUMBER OF UNITS SPAWNED
-    def spawn(self, locations, unit):
+    def spawn(self, build):
         total = 0
-        for location in locations:
-            total += self.game_state.attempt_spawn(unit,location)
+        for location, unit in build:
+            total += self.game_state.attempt_spawn(unit, location)
         return total
 
-    def upgrade(self, locations):
+    def upgrade(self, build):
         total = 0 
-        for location in locations:
+        for location, unit in build:
             total += self.game_state.attempt_upgrade(location)
         return total
     
-    def check_spawn(self, locations):
-        for location in locations:
+    def check_spawn(self, build):
+        for location, unit in build:
             if not self.game_state.game_map[location[0], location[1]]:
                 return False
         return True
     
-    def check_upgrade(self, locations):
-        for location in locations:
+    def check_upgrade(self, build):
+        for location, unit in build:
             if self.game_state.game_map[location[0], location[1]] and not self.game_state.game_map[location[0], location[1]][0].upgraded:
                 return False
         return True
     
     def build_in_order(self, build_order):
-        for locations, type, unit in build_order:
+        for build, type in build_order:
             if type == "SPAWN":
-                self.spawn(locations, unit)
-                if not self.check_spawn(locations):
+                self.spawn(build)
+                if not self.check_spawn(build):
                     return False
             if type == "UPGRADE":
-                self.upgrade(locations)
-                if not self.check_upgrade(locations):
+                self.upgrade(build)
+                if not self.check_upgrade(build):
                     return False
         return True
 
     def attack_with_two_demolishers(self):
-        self.spawn([[4, 9], [4, 9]], DEMOLISHER)
+        self.spawn([([4, 9], DEMOLISHER) for _ in range(2)])
     
     def attack_with_one_demolisher_and_max_scouts(self):
-        self.spawn([[4, 9]], DEMOLISHER)
-        self.spawn([[8, 5] for _ in range(100)], SCOUT)
+        self.spawn([([4, 9], DEMOLISHER)])
+        self.spawn([([8, 5], SCOUT) for _ in range(100)])
+    
+    def attack_with_max_demolishers(self):
+        self.spawn([([14, 0], DEMOLISHER) for _ in range(100)])
 
     def on_turn(self, turn_state):
         """
@@ -113,24 +123,29 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
 
         # defense
-        self.spawn(self.TURRETS, TURRET)
-        self.spawn(self.WALLS, WALL)
-        self.upgrade(self.TURRETS) 
-        self.spawn(self.SUPPORTS, SUPPORT)
-
-        if self.check_upgrade(self.TURRETS):
-            self.spawn(self.TURRETS_EXTRA, TURRET)
-            
-  
+        build_order = [(self.TURRETS1, "SPAWN"),
+                        (self.TURRETS1, "UPGRADE"),
+                        (self.WALLS1, "SPAWN"),
+                        (self.WALLS2, "SPAWN"),
+                        (self.TURRETS2, "SPAWN"),
+                        (self.TURRETS2, "UPGRADE"),
+                        (self.WALLS2, "UPGRADE"),
+                        (self.SUPPORTS, "SPAWN"),
+                        (self.SUPPORTS, "UPGRADE"),
+                        (self.PATH, "SPAWN"),
+                        ]
+        self.build_in_order(build_order)
         
         # attack
-        if (self.game_state.turn_number % 4 == 0):
-            # self.spawn(game_state, [[4, 9]], DEMOLISHER)
-            # self.spawn(game_state, [[8, 5] for _ in range(100)], SCOUT)
-            self.attack_with_one_demolisher_and_max_scouts()
-        elif (self.game_state.turn_number % 2 == 0):
-            self.attack_with_two_demolishers()
-
+        # if (self.game_state.turn_number % 4 == 0):
+        #     # self.spawn(game_state, [[4, 9]], DEMOLISHER)
+        #     # self.spawn(game_state, [[8, 5] for _ in range(100)], SCOUT)
+        #     # self.attack_with_one_demolisher_and_max_scouts()
+            # self.attack_with_max_demolishers()
+        # elif (self.game_state.turn_number % 2 == 0):
+            # self.attack_with_two_demolishers()
+        if self.game_state.get_resource(MP, 0) > 15:
+            self.attack_with_max_demolishers()
 
         self.game_state.submit_turn()
 
